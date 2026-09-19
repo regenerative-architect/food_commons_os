@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Food Commons OS — Cooperative Food Resilience Dashboard</title>
+<!--
+  ZERO-HARM & ANTI-INVERSION NOTE
+  This tool exists to help communities build food resilience through voluntary cooperation.
+  It must never be used to compel labor, concentrate control over land or food access, surveil
+  users, or extract data without consent. If any feature of this file could be repurposed to
+  gatekeep food, coerce participation, or centralize power over a community's food supply, that
+  feature should be removed or rewritten before reuse. Nothing here replaces legal authority,
+  food-safety regulation, or a community's own governance. All data stays on the user's device
+  unless they explicitly export it.
+-->
+<style>
+:root{
+  --paper:#F5F1E4; --card:#FFFDF6; --ink:#22281F; --ink-soft:#4B5A46;
+  --wheat:#A9791C; --leaf:#3F6B44; --clay:#8A5A3B; --line:#DCD5BE; --focus:#2F5D9C;
+  --danger:#9C3B2E;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#181D15; --card:#20261C; --ink:#E9E4D4; --ink-soft:#B7C0AE; --line:#333B2A; }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation:none!important;transition:none!important} }
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+h1,h2,h3{font-family:Georgia,'Iowan Old Style',serif;line-height:1.2;color:var(--ink)}
+h2{font-size:1.5rem;border-bottom:1px solid var(--line);padding-bottom:.4rem;margin-top:0}
+a{color:var(--wheat)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+main{max-width:840px;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+p{max-width:70ch}
+.noscript-banner{background:var(--danger);color:#fff;padding:.8rem 1rem;text-align:center;font-size:.95rem}
+
+/* ---------- Splash ---------- */
+#splash{position:fixed;inset:0;background:linear-gradient(160deg,#22281F,#3F6B44 140%);color:#F5F1E4;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;
+  animation:fadeOut 1.8s ease forwards;text-align:center;padding:1rem}
+#splash h1{color:#F5F1E4;font-size:2rem;margin:.2rem 0}
+#splash span{opacity:.85;font-size:.95rem}
+@keyframes fadeOut{0%{opacity:1;visibility:visible}75%{opacity:1}100%{opacity:0;visibility:hidden;pointer-events:none}}
+
+/* ---------- Topbar / TOC ---------- */
+#topbar{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem 1rem}
+#topbar strong{margin-right:.5rem;font-family:Georgia,serif}
+#nav-links{display:flex;flex-wrap:wrap;gap:.15rem 0;flex:1;min-width:200px}
+#nav-links a{font-size:.85rem;color:var(--ink-soft);text-decoration:none;padding:.3rem .55rem;border-radius:4px}
+#nav-links a:hover{background:var(--card)}
+#search-box,#entity-select{font:inherit;font-size:.85rem;padding:.35rem .5rem;border:1px solid var(--line);
+  border-radius:4px;background:var(--card);color:var(--ink)}
+.hidden-by-search{display:none!important}
+
+/* ---------- Hero / bands ---------- */
+.hero{padding:2.2rem 0 1rem}
+.band{height:64px;background:linear-gradient(120deg,var(--leaf),var(--wheat));background-attachment:fixed;
+  margin:2rem -1.25rem;opacity:.85}
+@media (max-width:840px){.band{background-attachment:scroll}}
+
+/* ---------- Cards / details ---------- */
+section{margin:2.2rem 0;scroll-margin-top:4.5rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1rem;margin:.7rem 0}
+details.card summary{cursor:pointer;font-weight:600;list-style:none}
+details.card summary::-webkit-details-marker{display:none}
+details.card summary::before{content:"▸ ";color:var(--wheat)}
+details.card[open] summary::before{content:"▾ "}
+.level-num{display:inline-block;min-width:1.6em;height:1.6em;border-radius:50%;background:var(--leaf);
+  color:#fff;text-align:center;line-height:1.6em;font-size:.85em;margin-right:.4em}
+label{display:block;font-size:.9rem;margin:.5rem 0 .2rem}
+input[type=number],input[type=text],select,textarea{width:100%;font:inherit;padding:.4rem;border:1px solid var(--line);
+  border-radius:4px;background:var(--paper);color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+button{font:inherit;background:var(--leaf);color:#fff;border:none;border-radius:4px;padding:.5rem .9rem;cursor:pointer}
+button.secondary{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.checkline{display:flex;gap:.5rem;align-items:flex-start;margin:.35rem 0}
+.tip{font-size:.8rem;color:var(--ink-soft);border-left:3px solid var(--line);padding-left:.6rem;margin:.5rem 0}
+
+/* ---------- Constellation ---------- */
+#const-wrap{display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center}
+#const-svg circle.node{fill:var(--line);stroke:var(--ink-soft);stroke-width:1;transition:fill .3s}
+#const-svg circle.node.lit{fill:var(--wheat);stroke:var(--leaf);filter:drop-shadow(0 0 4px var(--wheat))}
+#const-svg line{stroke:var(--line);stroke-width:2}
+#const-svg text{font-size:9px;fill:var(--ink-soft)}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;right:.8rem;bottom:.8rem;background:var(--card);border:1px solid var(--line);
+  border-radius:8px;padding:.6rem .8rem;font-size:.8rem;z-index:30;max-width:170px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+#hud-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:.3rem}
+#hud-fill{height:100%;background:var(--leaf);width:0%;transition:width .4s}
+
+footer{border-top:1px solid var(--line);padding:1.5rem 1.25rem 3rem;font-size:.85rem;color:var(--ink-soft);max-width:840px;margin:0 auto}
+footer h3{font-size:1rem}
+
+/* ---------- Print ---------- */
+@media print{
+  #topbar,#splash,#hud,.band,button,#search-box,#entity-select{display:none!important}
+  details.card{display:block!important}
+  details.card summary::before{content:""}
+  body{background:#fff;color:#000}
+  a{color:#000;text-decoration:underline}
+}
+</style>
+</head>
+<body>
+
+<noscript><div class="noscript-banner">This dashboard works best with JavaScript enabled (for saving your progress and the search tool). All written content below still fully readable without it.</div></noscript>
+
+<div id="splash" aria-hidden="true">
+  <h1>Food Commons OS</h1>
+  <span>A cooperative food-resilience dashboard — loading…</span>
+</div>
+
+<header id="topbar">
+  <strong>🌾 Food Commons OS</strong>
+  <nav id="nav-links">
+    <a href="#overview">Overview</a><a href="#levels">Six Levels</a><a href="#constellation">Map</a>
+    <a href="#assessment">Assessment</a><a href="#safeguards">Safeguards</a><a href="#plan90">90-Day Plan</a>
+    <a href="#evaluation">Evaluation</a><a href="#compact">Compact</a><a href="#attributions">Credits</a>
+  </nav>
+  <select id="entity-select" aria-label="View actions relevant to">
+    <option value="all">All entities</option>
+    <option value="household">Household / resident</option>
+    <option value="municipal">Municipal / city government</option>
+    <option value="regional">Provincial / state / national agency</option>
+    <option value="cooperative">Cooperative / producer group</option>
+    <option value="institutional">School / hospital / institutional buyer</option>
+  </select>
+  <input id="search-box" type="text" placeholder="Search this page…" aria-label="Search page content">
+</header>
+
+<main>
+
+<section id="overview">
+  <div class="hero">
+    <h1>Build food resilience without trading one dependency for another</h1>
+    <p>A city that imports nearly everything is vulnerable when a road closes. A city that grows everything itself is vulnerable to a single bad harvest. Real resilience comes from <strong>distributed food sovereignty</strong>: local capacity, regional exchange, and international trade that reinforce each other instead of replacing one single point of failure with another.</p>
+    <p>This dashboard turns that framework into something a government, cooperative, or institution can actually use: a shared map of who does what, a self-assessment, a governance checklist, a 90-day pilot tracker, and evaluation indicators — all editable, all saved on your own device, none of it sent anywhere.</p>
+  </div>
+</section>
+
+<div class="band" aria-hidden="true"></div>
+
+<section id="levels">
+  <h2>The six-level cooperative architecture</h2>
+  <p>No single level needs to produce every calorie. Each level does what it does best and connects to its neighbours so that losing one source doesn't eliminate access.</p>
+  <div id="levels-list"></div>
+</section>
+
+<section id="constellation">
+  <h2>Your network, at a glance</h2>
+  <p>Mark "action underway" on any level above and its node lights up here — a quick visual of how connected your local network currently is.</p>
+  <div id="const-wrap">
+    <svg id="const-svg" viewBox="0 0 300 260" width="260" height="230" role="img" aria-label="Constellation of six cooperation levels">
+      <line x1="150" y1="20" x2="260" y2="80"></line><line x1="260" y1="80" x2="260" y2="180"></line>
+      <line x1="260" y1="180" x2="150" y2="240"></line><line x1="150" y1="240" x2="40" y2="180"></line>
+      <line x1="40" y1="180" x2="40" y2="80"></line><line x1="40" y1="80" x2="150" y2="20"></line>
+      <g id="const-nodes"></g>
+    </svg>
+    <p class="tip" id="const-caption">0 of 6 levels active locally.</p>
+  </div>
+</section>
+
+<div class="band alt" aria-hidden="true"></div>
+
+<section id="assessment">
+  <h2>Local food-resilience self-assessment</h2>
+  <p>A rough, honest snapshot — not a scientific audit. Answers save automatically on this device.</p>
+  <div class="card">
+    <label for="a-reliance">Share of food supply reliant on a single distributor/route (%)</label>
+    <input type="number" id="a-reliance" min="0" max="100">
+    <label for="a-pathways">Number of genuinely independent supply pathways (different owners, routes, infrastructure)</label>
+    <input type="number" id="a-pathways" min="0">
+    <label for="a-reserve">Emergency food reserve, in days of adequate nutrition</label>
+    <input type="number" id="a-reserve" min="0">
+    <label for="a-access">Do residents without income still have a guaranteed nutrition pathway (school meals, food assistance, community kitchen)?</label>
+    <select id="a-access"><option value="">Select…</option><option>Yes</option><option>Partially</option><option>No</option></select>
+    <label for="a-notes">Notes for your own records</label>
+    <textarea id="a-notes" rows="2" maxlength="500"></textarea>
+    <p id="a-result" class="tip">Fill in the fields above to see a rough resilience read.</p>
+  </div>
+</section>
+
+<section id="safeguards">
+  <h2>Governance safeguards</h2>
+  <p>Cooperation can quietly recreate the gatekeeping it was meant to fix. Check off what's actually in place — not what's intended.</p>
+  <div id="safeguards-list"></div>
+</section>
+
+<section id="plan90">
+  <h2>90-day pilot tracker</h2>
+  <p>A pilot, not a finished system. Agricultural production may take a full season regardless — this tracks the cooperative relationships, not the harvest.</p>
+  <div id="plan-list"></div>
+</section>
+
+<section id="evaluation">
+  <h2>Evaluation indicators</h2>
+  <p>Distinguish visible activity from real improvement in food security. Reference table — use alongside your assessment above.</p>
+  <table><thead><tr><th>Indicator</th><th>What to measure</th></tr></thead><tbody id="eval-body"></tbody></table>
+</section>
+
+<section id="compact">
+  <h2>Intercooperative compact — seven questions</h2>
+  <p>A voluntary agreement between independent participants. Answer these before assuming everyone agrees on what "cooperation" means here.</p>
+  <div id="compact-list"></div>
+</section>
+
+</main>
+
+<div id="hud" role="status" aria-live="polite">
+  <div><strong id="hud-pct">0%</strong> network built</div>
+  <div id="hud-bar"><div id="hud-fill"></div></div>
+</div>
+
+<footer id="attributions">
+  <h3>Zero-Harm &amp; Anti-Inversion note</h3>
+  <p>This tool is for building voluntary, reciprocal food resilience — not for gatekeeping food, compelling labor, or concentrating control over land, harvests, or distribution. Any adaptation of this file that could be used to coerce, surveil, or exclude should be treated as a misuse of the design, not a feature of it. Real authority over land, safety, and food distribution stays with communities, producers, and the applicable regulators — this dashboard only helps coordinate and remember decisions.</p>
+  <h3>Privacy &amp; data</h3>
+  <p>All entries save locally (IndexedDB, with a localStorage fallback) on this device only. Nothing is transmitted, no analytics run by default, and no account is required. Use "Reset local data" to erase everything this page has stored, at any time.</p>
+  <button class="secondary" id="reset-btn">Reset local data</button>
+  <h3>Attributions &amp; licensing</h3>
+  <p>Conceptually informed by publicly documented approaches — the FAO's City Region Food Systems framework, USDA food-hub operational guidance, and general cooperative-economics practice — described here in original wording, not reproduced from any source. No proprietary or restricted code was copied; this file is offered for reuse and adaptation under a permissive, attribution-optional basis (treat as public domain / CC0-equivalent). Built as a static, offline-first single file with no external dependencies, trackers, or analytics.</p>
+  <p style="font-size:.75rem">Food Commons OS · v1.1 · Planetary Restoration Archive · prototype for coordination, not a substitute for legal, safety, or regulatory approval.</p>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ Storage layer: IndexedDB with localStorage fallback ============
+   Extend: add a new key via idbGet/idbSet — no schema migration needed since
+   this store is a flat key→value map. */
+const DB_NAME='fcos_db', STORE='state';
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    if(!window.indexedDB) return rej(new Error('no idb'));
+    const req=indexedDB.open(DB_NAME,1);
+    req.onupgradeneeded=()=>req.result.createObjectStore(STORE);
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function idbGet(key,fallback){
+  try{
+    const db=await idbOpen();
+    return await new Promise(res=>{
+      const r=db.transaction(STORE,'readonly').objectStore(STORE).get(key);
+      r.onsuccess=()=>res(r.result===undefined?fallback:r.result);
+      r.onerror=()=>res(fallback);
+    });
+  }catch(e){
+    try{const v=localStorage.getItem('fcos_'+key);return v?JSON.parse(v):fallback;}catch(_){return fallback;}
+  }
+}
+let lastWrite=0;
+async function idbSet(key,val){
+  const now=Date.now(); if(now-lastWrite<200) await new Promise(r=>setTimeout(r,200)); // gentle rate limit
+  lastWrite=Date.now();
+  try{
+    const db=await idbOpen();
+    await new Promise((res,rej)=>{
+      const r=db.transaction(STORE,'readwrite').objectStore(STORE).put(val,key);
+      r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+    });
+  }catch(e){ try{localStorage.setItem('fcos_'+key,JSON.stringify(val));}catch(_){} }
+}
+function clean(s){ return String(s==null?'':s).replace(/[<>]/g,'').slice(0,500); } // basic input sanitizing
+async function idbClearAll(){
+  try{
+    const db=await idbOpen();
+    await new Promise((res,rej)=>{
+      const r=db.transaction(STORE,'readwrite').objectStore(STORE).clear();
+      r.onsuccess=()=>res(); r.onerror=()=>rej(r.error);
+    });
+  }catch(e){}
+  try{ Object.keys(localStorage).filter(k=>k.indexOf('fcos_')===0).forEach(k=>localStorage.removeItem(k)); }catch(_){}
+}
+
+/* ============ Content data (edit these arrays to extend the dashboard) ============ */
+const LEVELS=[
+ {t:"Individual & household",e:["household"],d:"Gardens, preservation, seed-starting, and joining a purchasing or exchange group. Nobody who can't garden should lose access as a result.",a:["Learn one preservation skill this season","Join or start a 3–5 household exchange"]},
+ {t:"Neighbourhood",e:["household","municipal"],d:"Shared land, tools, kitchens, and nurseries — infrastructure too costly for one household alone.",a:["Inventory shared assets (tools, greenhouse space)","Draft a simple use & maintenance agreement"]},
+ {t:"City & surrounding region",e:["municipal","cooperative","institutional"],d:"A food hub connecting rural producers, urban growers, and anchor buyers like schools and hospitals.",a:["Map local producers and existing distribution points","Explore a standing purchase agreement with one institution"]},
+ {t:"Province / state",e:["regional","cooperative"],d:"Shared processing capacity, coordinated transport, and cross-border compliance for regional specialization.",a:["Identify one processing bottleneck a neighbouring region could ease","Confirm interprovincial/interstate food-safety rules before relying on a cross-border facility"]},
+ {t:"Country",e:["regional"],d:"National food-safety frameworks, research, transport corridors, and funding for local infrastructure.",a:["Check current infrastructure funding programs","Publish (or request) aggregated regional capacity data"]},
+ {t:"International",e:["regional","cooperative"],d:"Diversified trade for what can't be grown locally, and mutual aid when a region's harvest fails.",a:["List which staples rely on a single trade partner or port","Diversify at least one high-reliance import"]}
+];
+const SAFEGUARDS=[
+ ["Wealthier members dominate decisions","Transparent voting, clearly defined representation"],
+ ["Food reserved only for participating workers","Separate membership rules from essential food assistance"],
+ ["One operator controls distribution","Keep independent suppliers and alternative channels alive"],
+ ["Managers become unaccountable","Published finances, member oversight, independent audits"],
+ ["Farmers underpaid","Negotiated contracts with transparent payment terms"],
+ ["Volunteer labour becomes exploitative","Defined roles, reasonable workload, paid positions where due"],
+ ["Local elites acquire the land","Durable tenure, legally defined community-use terms"],
+ ["Production damages ecosystems","Water accounting, environmental monitoring, hard limits"],
+ ["Indigenous knowledge extracted","Indigenous governance and free, prior, informed consent"]
+];
+const PLAN=[
+ ["Days 1–15","Map existing capacity","Identify producers, storage, kitchens, transport, and land. Record access gaps alongside capacity."],
+ ["Days 16–30","Establish voluntary agreements","Define participation, ownership, pricing, food safety, and withdrawal rights with regulators consulted."],
+ ["Days 31–45","Launch one exchange pathway","Connect one farm, one distribution point, a few households. Test ordering and payment end to end."],
+ ["Days 46–60","Add one productive asset","Fund the bottleneck the baseline actually revealed — growing space, tools, or storage."],
+ ["Days 61–75","Test reciprocal resilience","Simulate losing one supplier or route. Can an alternative deliver in time?"],
+ ["Days 76–90","Audit and decide","Review cost, access, wages, waste, and ecology. Expand only what shows a real path to lasting on its own."]
+];
+const EVAL=[
+ ["Productive capacity","Annual edible output by food category and season"],
+ ["Local contribution","Local output as a share of the population's needs"],
+ ["Affordability","Cost of an adequate food basket vs. household resources"],
+ ["Household access","Share of residents experiencing food insecurity"],
+ ["Storage resilience","Usable reserve days by food category"],
+ ["Supplier diversity","Reliance on the largest suppliers and shared failure points"],
+ ["Distribution redundancy","Tested alternative routes and their real capacity"],
+ ["Producer viability","Net farm income and timeliness of payment"],
+ ["Shared ownership","Participation and representation by stakeholder group"],
+ ["Ecological performance","Water use, soil condition, emissions"],
+ ["Food loss","Edible food lost in storage, processing, transport"]
+];
+const COMPACT=[
+ ["Production","Which foods can we reliably produce, and in what seasons?"],
+ ["Exchange","What quantities, prices, and delivery terms are acceptable to everyone?"],
+ ["Infrastructure","Which facilities are shared, who owns them, who maintains them?"],
+ ["Resilience","How are shortages and disruptions actually handled?"],
+ ["Governance","How are decisions made, audited, and disputes resolved?"],
+ ["Access","How are residents with low income or capacity still included?"],
+ ["Ecology","What limits protect the water, soil, and biodiversity we depend on?"]
+];
+
+/* ============ Rendering (static, trusted app content — not user input) ============ */
+function renderLevels(){
+  const wrap=document.getElementById('levels-list');
+  wrap.innerHTML=LEVELS.map((L,i)=>`
+    <div class="card" data-entities="${L.e.join(' ')}">
+      <h3><span class="level-num">${i+1}</span>${L.t}</h3>
+      <p>${L.d}</p>
+      <ul>${L.a.map(x=>`<li>${x}</li>`).join('')}</ul>
+      <label class="checkline"><input type="checkbox" class="level-check" data-i="${i}"> Action underway at this level</label>
+    </div>`).join('');
+}
+function renderSafeguards(){
+  document.getElementById('safeguards-list').innerHTML=SAFEGUARDS.map((s,i)=>`
+    <div class="card"><strong>Risk:</strong> ${s[0]}<br><strong>Safeguard:</strong> ${s[1]}
+    <label class="checkline"><input type="checkbox" class="sg-check" data-i="${i}"> Adopted, not just planned</label></div>`).join('');
+}
+function renderPlan(){
+  document.getElementById('plan-list').innerHTML=PLAN.map((p,i)=>`
+    <details class="card"><summary>${p[0]} — ${p[1]}</summary>
+      <p>${p[2]}</p>
+      <label class="checkline"><input type="checkbox" class="plan-check" data-i="${i}"> Phase complete</label>
+    </details>`).join('');
+}
+function renderEval(){
+  document.getElementById('eval-body').innerHTML=EVAL.map(e=>`<tr><td>${e[0]}</td><td>${e[1]}</td></tr>`).join('');
+}
+function renderCompact(){
+  document.getElementById('compact-list').innerHTML=COMPACT.map((c,i)=>`
+    <div class="card"><strong>${c[0]}.</strong> ${c[1]}
+    <label class="checkline"><input type="checkbox" class="cp-check" data-i="${i}"> Answered and agreed</label></div>`).join('');
+}
+function renderConst(){
+  const pos=[[150,20],[260,80],[260,180],[150,240],[40,180],[40,80]];
+  document.getElementById('const-nodes').innerHTML=pos.map((p,i)=>
+    `<circle class="node" data-i="${i}" cx="${p[0]}" cy="${p[1]}" r="14"></circle>
+     <text x="${p[0]}" y="${p[1]+3}" text-anchor="middle">${i+1}</text>`).join('');
+}
+
+/* ============ State load/save & HUD ============ */
+let state={levels:new Array(6).fill(false), sg:new Array(9).fill(false),
+  plan:new Array(6).fill(false), cp:new Array(7).fill(false),
+  assessment:{}, entity:'all'};
+
+function updateHud(){
+  const total=6+9+6+7+1;
+  const done=state.levels.filter(Boolean).length+state.sg.filter(Boolean).length+
+    state.plan.filter(Boolean).length+state.cp.filter(Boolean).length+
+    (state.assessment && state.assessment.done?1:0);
+  const pct=Math.round(done/total*100);
+  document.getElementById('hud-pct').textContent=pct+'%';
+  document.getElementById('hud-fill').style.width=pct+'%';
+  const lit=state.levels.filter(Boolean).length;
+  document.getElementById('const-caption').textContent=lit+' of 6 levels active locally.';
+  document.querySelectorAll('#const-nodes .node').forEach((n,i)=>n.classList.toggle('lit',!!state.levels[i]));
+}
+function bindChecks(sel,arr,key){
+  document.querySelectorAll(sel).forEach(box=>{
+    const i=+box.dataset.i; box.checked=!!arr[i];
+    box.addEventListener('change',()=>{ arr[i]=box.checked; idbSet(key,arr); updateHud(); });
+  });
+}
+function computeAssessment(){
+  const rel=+document.getElementById('a-reliance').value||0;
+  const path=+document.getElementById('a-pathways').value||0;
+  const res=+document.getElementById('a-reserve').value||0;
+  const acc=document.getElementById('a-access').value;
+  const note=clean(document.getElementById('a-notes').value);
+  const filled=[rel,path,res,acc].some(v=>v!=='' && v!==0);
+  let score=0;
+  if(rel<40)score++; if(path>=3)score++; if(res>=7)score++; if(acc==='Yes')score++;
+  const labels=['Fragile — one link away from disruption','Developing — some redundancy exists',
+    'Diversified — several independent pathways','Distributed — strong multi-level resilience'];
+  const out=filled?labels[score]:'Fill in the fields above to see a rough resilience read.';
+  document.getElementById('a-result').textContent=out;
+  const a={reliance:rel,pathways:path,reserve:res,access:acc,notes:note,done:filled};
+  idbSet('assessment',a); state.assessment=a; updateHud();
+}
+
+/* ============ Search ============ */
+function runSearch(q){
+  q=q.trim().toLowerCase();
+  document.querySelectorAll('main section').forEach(sec=>{
+    if(!q){ sec.classList.remove('hidden-by-search'); return; }
+    const match=sec.textContent.toLowerCase().includes(q);
+    sec.classList.toggle('hidden-by-search',!match);
+    if(match) sec.querySelectorAll('details').forEach(d=>d.open=true);
+  });
+}
+
+/* ============ Entity filter ============ */
+function applyEntity(v){
+  document.querySelectorAll('#levels-list .card').forEach(c=>{
+    c.style.opacity=(v==='all'||c.dataset.entities.includes(v))?'1':'.45';
+  });
+}
+
+/* ============ Init ============ */
+async function init(){
+  renderLevels(); renderSafeguards(); renderPlan(); renderEval(); renderCompact(); renderConst();
+
+  state.levels=await idbGet('levels',state.levels);
+  state.sg=await idbGet('sg',state.sg);
+  state.plan=await idbGet('plan',state.plan);
+  state.cp=await idbGet('cp',state.cp);
+  state.assessment=await idbGet('assessment',{});
+  state.entity=await idbGet('entity','all');
+
+  bindChecks('.level-check',state.levels,'levels');
+  bindChecks('.sg-check',state.sg,'sg');
+  bindChecks('.plan-check',state.plan,'plan');
+  bindChecks('.cp-check',state.cp,'cp');
+
+  if(state.assessment){
+    if(state.assessment.reliance!=null) document.getElementById('a-reliance').value=state.assessment.reliance;
+    if(state.assessment.pathways!=null) document.getElementById('a-pathways').value=state.assessment.pathways;
+    if(state.assessment.reserve!=null) document.getElementById('a-reserve').value=state.assessment.reserve;
+    if(state.assessment.access) document.getElementById('a-access').value=state.assessment.access;
+    if(state.assessment.notes) document.getElementById('a-notes').value=state.assessment.notes;
+    computeAssessment();
+  }
+  ['a-reliance','a-pathways','a-reserve','a-access','a-notes'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',debounce(computeAssessment,300));
+    document.getElementById(id).addEventListener('change',computeAssessment);
+  });
+
+  const esel=document.getElementById('entity-select');
+  esel.value=state.entity; applyEntity(state.entity);
+  esel.addEventListener('change',()=>{ idbSet('entity',esel.value); applyEntity(esel.value); });
+
+  document.getElementById('search-box').addEventListener('input',debounce(e=>runSearch(e.target.value),200));
+
+  document.getElementById('reset-btn').addEventListener('click',async()=>{
+    if(!confirm('Erase all locally saved progress on this device? This cannot be undone.')) return;
+    await idbClearAll();
+    location.reload();
+  });
+
+  updateHud();
+  setTimeout(()=>{ const s=document.getElementById('splash'); if(s) s.remove(); },1900);
+}
+function debounce(fn,ms){ let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a),ms); }; }
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
+</body>
+</html>
+
